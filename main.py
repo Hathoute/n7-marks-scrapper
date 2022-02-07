@@ -8,11 +8,12 @@ import csv
 import time
 import discord
 import threading
+import os
 
 # Constants
-my_username = "planeteINP-username"
-my_password = "planeteINP-password"
-bot_secret = "your-discord-bot-secret"
+my_username = os.environ['N7_USERNAME']
+my_password = os.environ['N7_PASSWORD']
+bot_secret = os.environ['BOT_SECRET']
 
 save_file = Path("./marks.txt")
 save_file.parent.mkdir(parents=True, exist_ok=True)
