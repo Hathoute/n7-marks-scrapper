@@ -1,0 +1,11 @@
+# Exclude virtual environment
+venv
+
+# Exclude idea environment
+.idea
+
+# Exclude geckodriver logger
+geckodriver.log
+
+# Exclude my own marks :D
+marks.txt
