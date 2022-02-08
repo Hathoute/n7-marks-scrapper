@@ -4,8 +4,8 @@ venv
 # Exclude idea environment
 .idea
 
-# Exclude geckodriver logger
-geckodriver.log
+# Exclude loggers
+*.log
 
 # Exclude my own marks :D
 marks.txt

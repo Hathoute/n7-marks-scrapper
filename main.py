@@ -9,6 +9,21 @@ import time
 import discord
 import threading
 import os
+import logging
+
+# Set logging
+root_logger = logging.getLogger("n7-scrap")
+root_logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler('n7-scrap.log', 'a+', 'utf-8')
+handler.setFormatter(logging.Formatter('%(asctime)s %(name)s:%(levelname)s:%(message)s'))
+root_logger.addHandler(handler)
+
+
+# Exceptions
+class RecoverableException(Exception):
+    def __init__(self):
+        pass
+
 
 # Constants
 my_username = os.environ['N7_USERNAME']
@@ -37,7 +52,7 @@ class Message:
 
 @discord_client.event
 async def on_ready():
-    print('We have logged in as {0.user}'.format(discord_client))
+    root_logger.info('We have logged in as {0.user}'.format(discord_client))
 
 
 @discord_client.event
@@ -45,7 +60,7 @@ async def on_message(message):
     if message.author == discord_client.user:
         return
 
-    print("Received message from {1}: {0}".format(message.content, message.author.name))
+    root_logger.info("Received message from {1}: {0}".format(message.content, message.author.name))
 
     if message.author.id != 285411445028421632:
         await message.author.send("Unauthorized user!")
@@ -73,7 +88,8 @@ async def notify_users():
             try:
                 user = await discord_client.fetch_user(m.user_id)
                 await user.send(m.message)
-            except Exception:
+            except Exception as e:
+                root_logger.exception("Notify users failed with exception {0}".format(e))
                 pass
 
             message_queue.remove(m)
@@ -82,7 +98,18 @@ async def notify_users():
 
 
 # Helpers
+def start_firefox():
+    global driver
+
+    if driver is not None:
+        driver.close()
+
+    driver = webdriver.Firefox()
+
+
 def reset():
+    root_logger.debug("Executing reset command")
+
     if save_file.exists():
         save_file.unlink()
     event.set()
@@ -91,15 +118,16 @@ def reset():
 def hard_reset():
     global stop_thread, thd, driver
 
+    root_logger.debug("Executing hard reset command")
+
     if save_file.exists():
         save_file.unlink()
 
     stop_thread = True
     event.set()
+    root_logger.debug("Waiting for thread to finish")
     thd.join()
-
-    driver.close()
-    driver = webdriver.Firefox()
+    root_logger.debug("Thread finished")
 
     thd = threading.Thread(target=main)
     thd.start()
@@ -110,12 +138,17 @@ def format_mark(t):
 
 
 def get_clickable_from_span(text):
+    i = 0
     while True:
         try:
             sp = driver.find_element(By.XPATH, "//span[text()='" + text + "']")
             break
         except Exception:
-            pass
+            if i > 5:
+                root_logger.error("Could not get clickable from span {0}".format(text))
+                raise RecoverableException
+            i += 1
+            time.sleep(1)
 
     return sp.find_element(By.XPATH, "./../..")
 
@@ -147,9 +180,11 @@ def on_new_mark(t):
 
 
 def login():
+    root_logger.debug("Logging in")
     driver.get("https://mdw.inp-toulouse.fr/mdw3/#!notesView")
     if driver.current_url == "https://mdw.inp-toulouse.fr/mdw3/#!notesView":
         # Already logged in, refresh if table is still open
+        root_logger.debug("Already logged in...")
         driver.refresh()
         return
 
@@ -164,8 +199,12 @@ def login():
     driver.get("https://mdw.inp-toulouse.fr/mdw3/#!notesView")
     driver.refresh()
 
+    root_logger.debug("Logged in, current URL is {0}".format(driver.current_url))
+
 
 def load_website_marks():
+    root_logger.debug("Loading website marks")
+
     # Click on 2nd year marks
     get_clickable_from_span("N7I52/181").click()
     time.sleep(1)
@@ -179,11 +218,14 @@ def load_website_marks():
     tbl = get_first_parent(elt, "tbody")
     tbody_text = tbl.text
 
+    root_logger.debug("Table text: {0}".format(tbody_text.replace("\n", "\\n")))
+
     # Tuple in form: (CODE, NAME, MARK, _)
     return re.findall(r"(N[A-Z0-9]+)\n +([^\n]+)\n([0-9]+(\.[0-9]+)?)\n", tbody_text)
 
 
 def analyse_marks(new_marks, saved_marks):
+    root_logger.debug("Analysing marks: new count is {0} - saved count is {1}".format(len(new_marks), len(saved_marks)))
     if len(new_marks) == len(saved_marks):
         return saved_marks
 
@@ -191,6 +233,7 @@ def analyse_marks(new_marks, saved_marks):
     new_dict = {t[0]: t for t in new_marks if not t[0] in saved_dict}
 
     for key in new_dict:
+        root_logger.info("New mark found: {0}".format(key))
         on_new_mark(new_dict[key])
 
     return [(t[0], t[1], t[2]) for t in new_marks]
@@ -198,17 +241,28 @@ def analyse_marks(new_marks, saved_marks):
 
 def main():
     global stop_thread
+
+    root_logger.info("Executing main loop")
     stop_thread = False
     while not stop_thread:
-        login()
-        new = load_website_marks()
-        saved = load_saved_marks()
+        try:
+            # Bugfix for firefox crashing on linux
+            start_firefox()
 
-        new = analyse_marks(new, saved)
-        save_marks(new)
+            login()
+            new = load_website_marks()
+            saved = load_saved_marks()
 
-        event.clear()
-        event.wait(10*60)
+            new = analyse_marks(new, saved)
+            save_marks(new)
+
+            if not stop_thread:
+                # What if user tried hard resetting while not waiting...
+                event.clear()
+            event.wait(10*60)
+        except RecoverableException:
+            # Error when loading page maybe? try again.
+            pass
 
 
 thd = threading.Thread(target=main)
