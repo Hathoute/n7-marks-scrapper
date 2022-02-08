@@ -107,6 +107,15 @@ def start_firefox():
     driver = webdriver.Firefox()
 
 
+def close_firefox():
+    global driver
+
+    if driver is not None:
+        driver.close()
+
+    driver = None
+
+
 def reset():
     root_logger.debug("Executing reset command")
 
@@ -257,6 +266,9 @@ def main():
 
             new = analyse_marks(new, saved)
             save_marks(new)
+
+            # Close firefox
+            close_firefox()
 
             event.wait(10*60)
         except RecoverableException:
