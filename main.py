@@ -246,6 +246,8 @@ def main():
     stop_thread = False
     while not stop_thread:
         try:
+            # Clear event if a reset was requested
+            event.clear()
             # Bugfix for firefox crashing on linux
             start_firefox()
 
@@ -256,9 +258,6 @@ def main():
             new = analyse_marks(new, saved)
             save_marks(new)
 
-            if not stop_thread:
-                # What if user tried hard resetting while not waiting...
-                event.clear()
             event.wait(10*60)
         except RecoverableException:
             # Error when loading page maybe? try again.
