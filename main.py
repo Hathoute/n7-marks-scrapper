@@ -33,7 +33,7 @@ bot_secret = os.environ['BOT_SECRET']
 save_file = Path("./marks.txt")
 save_file.parent.mkdir(parents=True, exist_ok=True)
 
-driver = webdriver.Firefox()
+driver = None
 
 discord_client = discord.Client()
 subscribed_user_ids = [285411445028421632]
@@ -102,7 +102,7 @@ def start_firefox():
     global driver
 
     if driver is not None:
-        driver.close()
+        driver.quit()
 
     driver = webdriver.Firefox()
 
@@ -111,7 +111,7 @@ def close_firefox():
     global driver
 
     if driver is not None:
-        driver.close()
+        driver.quit()
 
     driver = None
 
