@@ -42,6 +42,8 @@ message_queue = []
 event = threading.Event()
 stop_thread = False
 
+latest_success = time.localtime()
+
 
 # Discord
 class Message:
@@ -76,6 +78,9 @@ async def on_message(message):
     elif message.content == "hardreset":
         await message.author.send("Hard reset requested by user.")
         hard_reset()
+        return
+    elif message.content == "last":
+        await message.author.send("Latest successful scrap: {0}".format(time.strftime("%H:%M:%S", latest_success)))
         return
 
     await message.author.send("Unknown command.")
@@ -249,7 +254,7 @@ def analyse_marks(new_marks, saved_marks):
 
 
 def main():
-    global stop_thread
+    global stop_thread, latest_success
 
     root_logger.info("Executing main loop")
     stop_thread = False
@@ -267,13 +272,18 @@ def main():
             new = analyse_marks(new, saved)
             save_marks(new)
 
+            latest_success = time.localtime()
+
             # Close firefox
             close_firefox()
 
             event.wait(10*60)
         except RecoverableException:
             # Error when loading page maybe? try again.
-            pass
+            event.wait(5*60)
+        except Exception as e:
+            root_logger.exception("Fetch thread raised exception {0}".format(e))
+            event.wait(5*60)
 
 
 thd = threading.Thread(target=main)
