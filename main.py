@@ -1,5 +1,6 @@
 import asyncio
 from selenium import webdriver
+from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
 import selenium.common.exceptions as exc
 import re
@@ -218,6 +219,8 @@ def login():
 
 def load_website_marks():
     root_logger.debug("Loading website marks")
+
+    driver.set_window_size(1080, 3000)
 
     # Click on 2nd year marks
     get_clickable_from_span("N7I52/181").click()
