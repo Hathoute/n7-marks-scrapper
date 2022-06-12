@@ -111,6 +111,7 @@ def start_firefox():
         driver.quit()
 
     driver = webdriver.Firefox()
+    driver.set_window_size(1080, 3000)
 
 
 def close_firefox():
@@ -219,8 +220,6 @@ def login():
 
 def load_website_marks():
     root_logger.debug("Loading website marks")
-
-    driver.set_window_size(1080, 3000)
 
     # Click on 2nd year marks
     get_clickable_from_span("N7I52/181").click()
