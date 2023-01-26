@@ -1,8 +1,8 @@
 import asyncio
 from selenium import webdriver
-from selenium.webdriver import Keys
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
-import selenium.common.exceptions as exc
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 import re
 from pathlib import Path
 import csv
@@ -110,7 +110,10 @@ def start_firefox():
     if driver is not None:
         driver.quit()
 
-    driver = webdriver.Firefox()
+    options = FirefoxOptions()
+    options.log.level = "trace"
+    options.add_argument("-devtools")
+    driver = webdriver.Remote("http://localhost:4444", options=options)
     driver.set_window_size(1080, 3000)
 
 
@@ -172,7 +175,7 @@ def get_clickable_from_span(text):
 def get_first_parent(element, xpath):
     try:
         return element.find_element(By.XPATH, "./../" + xpath)
-    except exc.NoSuchElementException:
+    except NoSuchElementException:
         return get_first_parent(element.find_element(By.XPATH, "./.."), xpath)
 
 
@@ -222,7 +225,7 @@ def load_website_marks():
     root_logger.debug("Loading website marks")
 
     # Click on 2nd year marks
-    get_clickable_from_span("N7I52/181").click()
+    get_clickable_from_span("N7I53/181").click()
     time.sleep(1)
 
     # Close Help popup
@@ -230,7 +233,7 @@ def load_website_marks():
     time.sleep(1)
 
     # Get table text
-    elt = driver.find_element(By.XPATH, "//b[text()='N7I52']")
+    elt = driver.find_element(By.XPATH, "//b[text()='N7I53']")
     tbl = get_first_parent(elt, "tbody")
     tbody_text = tbl.text
 
@@ -279,7 +282,7 @@ def main():
             # Close firefox
             close_firefox()
 
-            event.wait(10*60)
+            event.wait(1)
         except RecoverableException:
             # Error when loading page maybe? try again.
             event.wait(5*60)
