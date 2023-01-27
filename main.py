@@ -1,8 +1,8 @@
 import asyncio
+import sys
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
+import selenium.common.exceptions as exc
 import re
 from pathlib import Path
 import csv
@@ -15,9 +15,13 @@ import logging
 # Set logging
 root_logger = logging.getLogger("n7-scrap")
 root_logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler('n7-scrap.log', 'a+', 'utf-8')
-handler.setFormatter(logging.Formatter('%(asctime)s %(name)s:%(levelname)s:%(message)s'))
-root_logger.addHandler(handler)
+formatter = logging.Formatter('%(asctime)s %(name)s:%(levelname)s:%(message)s')
+fileHandler = logging.FileHandler('n7-scrap.log', 'a+', 'utf-8')
+fileHandler.setFormatter(formatter)
+stdoutHandler = logging.StreamHandler(sys.stdout)
+stdoutHandler.setFormatter(formatter)
+root_logger.addHandler(fileHandler)
+root_logger.addHandler(stdoutHandler)
 
 
 # Exceptions
@@ -31,7 +35,7 @@ my_username = os.environ['N7_USERNAME']
 my_password = os.environ['N7_PASSWORD']
 bot_secret = os.environ['BOT_SECRET']
 
-save_file = Path("./marks.txt")
+save_file = Path("./data/marks.txt")
 save_file.parent.mkdir(parents=True, exist_ok=True)
 
 driver = None
@@ -110,10 +114,7 @@ def start_firefox():
     if driver is not None:
         driver.quit()
 
-    options = FirefoxOptions()
-    options.log.level = "trace"
-    options.add_argument("-devtools")
-    driver = webdriver.Remote("http://localhost:4444", options=options)
+    driver = webdriver.Firefox()
     driver.set_window_size(1080, 3000)
 
 
@@ -175,7 +176,7 @@ def get_clickable_from_span(text):
 def get_first_parent(element, xpath):
     try:
         return element.find_element(By.XPATH, "./../" + xpath)
-    except NoSuchElementException:
+    except exc.NoSuchElementException:
         return get_first_parent(element.find_element(By.XPATH, "./.."), xpath)
 
 
@@ -282,7 +283,7 @@ def main():
             # Close firefox
             close_firefox()
 
-            event.wait(1)
+            event.wait(10*60)
         except RecoverableException:
             # Error when loading page maybe? try again.
             event.wait(5*60)

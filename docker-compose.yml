@@ -1,0 +1,11 @@
+version: "3.7"
+services:
+  n7-scrapper:
+    image: hathoute/n7-marks-scrapper:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - n7-scrapper:/app/N7/data
+volumes:
+  n7-scrapper:
